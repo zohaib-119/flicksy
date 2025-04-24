@@ -1,0 +1,107 @@
+<div class="flex items-center justify-between p-6 sticky top-0" style="background-color: #AA00FF;">
+    <h1 class="text-2xl font-bold text-white cursor-pointer"><a href="/">Flicksy</a></h1>
+
+    <div class="flex items-center gap-4">
+        <button
+            class="px-4 py-2 bg-white text-white rounded-lg cursor-pointer font-semibold hover:font-bold transition"
+            style="color: #AA00FF;"><a href="search">Explore</a></button>
+        <button
+            class="px-4 py-2 bg-white text-white rounded-lg cursor-pointer font-semibold hover:font-bold transition"
+            style="color: #AA00FF;" onclick="toggleModal(true)">Add Post</button>
+
+        <div class="relative">
+            <img id="profileImage" onclick="toggleDropdown()" src="{{user_profile.avatar.url}}" alt="Profile"
+                class="w-10 h-10 rounded-full cursor-pointer object-cover" />
+
+            <!-- Dropdown -->
+            <div id="profileDropdown"
+                class="hidden absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-lg z-10">
+                <a href="/profile/{{user.username}}">
+                    <button class="block w-full px-4 py-2 text-left hover:bg-blue-100 cursor-pointer">
+                        Profile</button></a>
+                <a href="logout">
+                    <button
+                        class="block w-full px-4 py-2 text-left hover:bg-red-100 cursor-pointer">Logout</button></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="uploadModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+        <h2 class="text-xl font-semibold mb-4 text-[#AA00FF]">Upload New Post</h2>
+        <form action="upload" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label class="block mb-2 font-medium">Image</label>
+            <input type="file" accept="image/*" name="image" id="imageInput"
+                class="w-full mb-2 border rounded p-2" onchange="previewImage()" required />
+
+            <!-- Image Preview -->
+            <div id="imagePreviewContainer" class="mb-4 hidden">
+                <img id="imagePreview" src="" alt="Image Preview"
+                    class="w-full rounded border max-h-60 object-cover" />
+            </div>
+
+            <label class="block mb-2 font-medium">Caption</label>
+            <textarea name='caption' id="caption" class="w-full border rounded p-2 mb-4 resize-none" rows="3"
+                placeholder="Write your caption..." required></textarea>
+
+            <div class="flex justify-end gap-4">
+                <button type="button" onclick="toggleModal(false)"
+                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</button>
+                <button type='submit'
+                    class="px-4 py-2 bg-[#AA00FF] text-white rounded hover:bg-purple-800">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Toggle dropdown on profile image click
+    function toggleDropdown() {
+        const dropdown = document.getElementById("profileDropdown");
+        dropdown.classList.toggle("hidden");
+    }
+
+    // Optional: Hide dropdown on click outside
+    window.addEventListener("click", function (e) {
+        const profileImage = document.getElementById("profileImage");
+        const dropdown = document.getElementById("profileDropdown");
+
+        if (!profileImage.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add("hidden");
+        }
+    });
+
+    // upload post
+    function toggleModal(show) {
+        const modal = document.getElementById('uploadModal');
+        if (show) {
+            modal.classList.remove('hidden');
+        } else {
+            modal.classList.add('hidden');
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imageInput').value = '';
+            document.getElementById('caption').value = '';
+        }
+    }
+
+    function previewImage() {
+        const input = document.getElementById('imageInput');
+        const preview = document.getElementById('imagePreview');
+        const container = document.getElementById('imagePreviewContainer');
+
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                container.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+</script>

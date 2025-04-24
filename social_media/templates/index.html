@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <title>Flicksy</title>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- navbar  -->
+    {% include 'navbar.html' %}
+
+    <!-- feed -->
+    <div class="lg:w-3/4">
+        <div class="flex flex-col gap-4 my-10" id="posts-container">
+            {% if posts %}
+            {% for post in posts %}
+            <!-- post -->
+            <div data-post-id="{{ post.id }}"
+                class="post max-w-md mx-auto bg-white rounded-xl overflow-hidden border border-gray-200">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4">
+                    <a href="/profile/{{post.author.username}}">
+                        <div class="flex items-center gap-3 cursor-pointer">
+                            <!-- Displaying author's avatar -->
+                            <img src="{{ post.author.profile.avatar.url }}" alt="Profile"
+                                class="w-10 h-10 rounded-full object-cover">
+                            <!-- Displaying author's username -->
+                            <p class="font-semibold text-gray-800">@{{ post.author.username }}</p>
+                        </div>
+                    </a>
+                    {% if user_profile.user.username != post.author.username %}
+                    <button class="text-sm text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md">
+                        Follow
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- Post Image -->
+                <div>
+                    <!-- Displaying the post's image -->
+                    <img src="{{ post.image.url }}" alt="Post Image" class="w-full object-cover">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between px-4 py-3">
+                    <div class="flex items-center gap-6 text-gray-700">
+                        <div class="like-btn flex items-center gap-1 cursor-pointer hover:text-red-500 transition">
+                            ❤️ <span class="likes-count" id="likes-count-{{post.id}}">{{ post.total_likes }}</span>
+                        </div>
+                        <div class="comment-btn flex items-center gap-1 cursor-pointer hover:text-blue-500 transition"
+                            hx-get="/posts/{{ post.id }}" hx-target="#modal-body" hx-trigger="click">
+                            💬 <span id="comments-count-{{post.id}}">{{ post.total_comments }}</span>
+                        </div>
+                    </div>
+                    <div class="save-btn cursor-pointer hover:text-yellow-500 transition">
+                        <svg width="25px" height="25px" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M6.75 6L7.5 5.25H16.5L17.25 6V19.3162L12 16.2051L6.75 19.3162V6ZM8.25 6.75V16.6838L12 14.4615L15.75 16.6838V6.75H8.25Z"
+                                fill="black" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Caption -->
+                <div class="px-4 pb-4 text-gray-800">
+                    <span class="font-semibold">{{ post.author.username }}</span> {{ post.caption }}
+                    <!-- Displaying caption -->
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if more_posts_exist %}
+        <div id="show-more-container" class="flex justify-center mb-4">
+            <button id="show-more-btn" data-page="2"
+                class="bg-slate-100 text-black rounded-full px-2 py-1 cursor-pointer hover:bg-slate-200 transition">show
+                more</button>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-center text-gray-600">
+            <p>Follow someone to see posts!</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- recommendations  -->
+
+    <div class="hidden lg:w-1/4 lg:absolute lg:block">
+        {% if suggested_users %}
+        <div class="fixed top-40 right-20 w-72 bg-[#aa00ff] text-white p-4 rounded-xl space-y-3">
+            <h2 class="text-lg font-bold">Recommended Users</h2>
+
+            {% for user in suggested_users %}
+            <a href="/profile/{{user.username}}">
+                <div class="bg-white text-gray-800 p-2 rounded-lg flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <img src="{{user.profile.avatar.url}}" alt="User" class="w-10 h-10 rounded-full object-cover">
+                        <p>@<strong>{{user.username}}</strong></p>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div id="modal-body"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const showMoreBtn = document.getElementById("show-more-btn");
+            const postsContainer = document.getElementById("posts-container")
+
+            if (showMoreBtn) {
+                showMoreBtn.addEventListener("click", () => {
+                    const page = parseInt(showMoreBtn.getAttribute("data-page"))
+                    fetch(`/fetch-posts?page=${page}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data);
+                            data.posts.forEach(post => {
+                                const postHtml = `
+                                    <div class="max-w-md mx-auto bg-white rounded-xl overflow-hidden border border-gray-200">
+                                        <div class="flex items-center justify-between p-4">
+                                            <a href="/profile/${post.author}">
+                                            <div class="flex items-center gap-3">
+                                                <img src="${post.image_url}" alt="Profile"
+                                                    class="w-10 h-10 rounded-full object-cover">
+                                                <p class="font-semibold text-gray-800">@${post.author}</p>
+                                            </div>
+                                            </a>
+                                        </div>
+                                        <div>
+                                            <img src="${post.image_url}" alt="Post Image" class="w-full object-cover">
+                                        </div>
+                                        <div class="flex items-center justify-between px-4 py-3">
+                                            <div class="flex items-center gap-6 text-gray-700">
+                                                <div class="flex items-center gap-1 cursor-pointer hover:text-red-500 transition">
+                                                    ❤️
+                                                    <span>${post.likes_count}</span>
+                                                </div>
+                                                <div hx-get="/posts/${post.id}" hx-target="#modal-body" hx-trigger="click"  class="flex items-center gap-1 cursor-pointer hover:text-blue-500 transition">
+                                                    💬
+                                                    <span>${post.comments_count}</span>
+                                                </div>
+                                            </div>
+                                            <div class="cursor-pointer hover:text-yellow-500 transition">
+                                                <svg width="25px" height="25px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M6.75 6L7.5 5.25H16.5L17.25 6V19.3162L12 16.2051L6.75 19.3162V6ZM8.25 6.75V16.6838L12 14.4615L15.75 16.6838V6.75H8.25Z" fill="#080341"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="px-4 pb-4 text-gray-800">
+                                            <span class="font-semibold">${post.author}</span> ${post.caption}
+                                        </div>
+                                    </div>
+                                    `;
+                                postsContainer.insertAdjacentHTML('beforeend', postHtml);
+                            })
+                            htmx.process(postsContainer);
+                            // Update or hide the button
+                            if (data.has_next) {
+                                showMoreBtn.setAttribute("data-page", page + 1);
+                            } else {
+                                document.getElementById("show-more-container").remove();
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error fetching posts:", err);
+                        });
+                })
+            }
+
+            document.getElementById('posts-container').addEventListener('click', function (e) {
+                const likeBtn = e.target.closest('.like-btn');
+                const saveBtn = e.target.closest('.save-btn');
+
+                if (likeBtn) {
+                    const postEl = likeBtn.closest('.post');
+                    const postId = postEl.dataset.postId;
+                    const likesCount = likeBtn.querySelector('.likes-count')
+                    fetch(`/like/${postId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            likesCount.innerText = data.likes_count;
+                        })
+                        .catch(error => {
+                            console.log(error);
+                        })
+                }
+
+                if (saveBtn) {
+                    const postEl = saveBtn.closest('.post');
+                    const postId = postEl.dataset.postId;
+                    fetch(`/save/${postId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // console.log('post saved')
+                            // if(data.saved){
+                            //     saveBtn.innerHTML = `
+                            //     <svg width="25px" height="25px" viewBox="-4 0 30 30" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+                            //         <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+                            //             <g id="Icon-Set-Filled" sketch:type="MSLayerGroup" transform="translate(-419.000000, -153.000000)" fill="#000000">
+                            //                 <path d="M437,153 L423,153 C420.791,153 419,154.791 419,157 L419,179 C419,181.209 420.791,183 423,183 L430,176 L437,183 C439.209,183 441,181.209 441,179 L441,157 C441,154.791 439.209,153 437,153" id="bookmark" sketch:type="MSShapeGroup">
+                            //                 </path>
+                            //             </g>
+                            //         </g>
+                            //     </svg>
+                            //     `
+                            // } else {
+                            //     saveBtn.innerHTML = `
+                            //     <svg width="25px" height="25px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            //         <path fill-rule="evenodd" clip-rule="evenodd" d="M6.75 6L7.5 5.25H16.5L17.25 6V19.3162L12 16.2051L6.75 19.3162V6ZM8.25 6.75V16.6838L12 14.4615L15.75 16.6838V6.75H8.25Z" fill="#080341"/>
+                            //     </svg>
+                            //     `
+                            // }
+                        })
+                        .catch(error => {
+                            console.log(error);
+                        })
+                }
+            });
+        });
+
+        const listenersMap = {}; // To keep track of old listeners by element ID and event type
+
+        function addOrReplaceListener(id, type, handler) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            const key = `${id}_${type}`;
+            if (listenersMap[key]) {
+                el.removeEventListener(type, listenersMap[key]);
+            }
+
+            el.addEventListener(type, handler);
+            listenersMap[key] = handler;
+        }
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,157 @@
+<!-- Modal for Post -->
+<div id="postModal" data-postId="{{post.id}}"
+    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl overflow-hidden w-full max-w-4xl flex flex-col md:flex-row">
+
+        <!-- Left: Post Content -->
+        <div class="w-full md:w-1/2">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4">
+                <div class="flex items-center gap-3">
+                    <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
+                        alt="Profile" class="w-10 h-10 rounded-full object-cover">
+                    <p class="font-semibold text-gray-800">@{{author_profile.user.username}}</p>
+                </div>
+            </div>
+
+            <!-- Post Image -->
+            <div>
+                <img src="{{post.image.url}}" alt="Post Image" class="w-full object-cover max-h-[400px]">
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between px-4 py-3">
+                <div class="flex items-center gap-6 text-gray-700">
+                    <div id="likeBtn" class="flex items-center gap-1 cursor-pointer hover:text-red-500 transition">
+                        ❤️ <span id="likes-count">{{likes_count}} likes</span>
+                    </div>
+                    <div class="flex items-center gap-1 cursor-pointer hover:text-blue-500 transition">
+                        💬 <span id="comments-count">{{comments_count}} comments</span>
+                    </div>
+                </div>
+                <div id="saveBtn" class="cursor-pointer hover:text-yellow-500 transition">
+                    <svg width="25px" height="25px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M6.75 6L7.5 5.25H16.5L17.25 6V19.3162L12 16.2051L6.75 19.3162V6ZM8.25 6.75V16.6838L12 14.4615L15.75 16.6838V6.75H8.25Z"
+                            fill="#080341" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Caption -->
+            <div class="px-4 pb-4 text-gray-800">
+                <span class="font-semibold">@{{author_profile.user.username}}</span> {{post.caption}}
+            </div>
+        </div>
+
+        <!-- Right: Comments Section -->
+        <div class="w-full md:w-1/2 flex flex-col justify-between">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4">
+                <h2 class="text-lg font-semibold text-gray-700">Comments</h2>
+                <button class="text-sm text-red-500 cursor-pointer hover:underline" id="closeBtn">X</button>
+            </div>
+
+            <!-- Comments List -->
+            <div id='comment-container' class="flex-1 overflow-y-auto max-h-80 px-4 pt-2 pb-10 space-y-3">
+                {% for comment in comments %}
+                <div>
+                    <h3 class="font-semibold text-gray-800">@{{comment.user.username}}</h3>
+                    <p class="text-sm text-gray-600">{{comment.comment}}</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Add Comment -->
+            <div class="px-4 py-3">
+                <form id="comment-form" action="/comment/{{ post.id }}" method="post">
+                    {% csrf_token %}
+                    <div class="flex gap-2">
+                        <input type="text" name="comment" required placeholder="Add a comment..."
+                            class="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#AA00FF]">
+                        <button type='submit'
+                            class="bg-[#AA00FF] text-white text-sm px-4 py-2 rounded-lg hover:bg-purple-700 transition">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.body.addEventListener("htmx:afterSwap", function () {
+    const postModal = document.getElementById("postModal");
+    if (!postModal) return;
+
+    const postId = parseInt(postModal.getAttribute('data-postId'));
+
+    addOrReplaceListener("closeBtn", "click", () => {
+        const modal = document.getElementById("postModal");
+        if (modal) modal.remove();
+    });
+
+    addOrReplaceListener("likeBtn", "click", () => {
+        fetch(`/like/${postId}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('likes-count').innerText = data.likes_count + ' likes';
+                const countEl = document.getElementById(`likes-count-${postId}`);
+                if (countEl) countEl.innerText = data.likes_count;
+            })
+            .catch(console.error);
+    });
+
+    addOrReplaceListener("saveBtn", "click", () => {
+        fetch(`/save/${postId}`)
+            .then(res => res.json())
+            .then(() => console.log('post saved'))
+            .catch(console.error);
+    });
+
+    const form = document.getElementById('comment-form');
+    if (form) {
+        const key = 'comment-form_submit';
+        if (listenersMap[key]) {
+            form.removeEventListener('submit', listenersMap[key]);
+        }
+
+        const submitHandler = async function (e) {
+            e.preventDefault();
+
+            const commentInput = form.querySelector('input[name="comment"]');
+            const commentText = commentInput.value;
+            commentInput.value = '';
+            const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({ comment: commentText })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const commentContainer = document.getElementById('comment-container');
+                commentContainer.insertAdjacentHTML('afterbegin', `
+                    <div>
+                        <h3 class="font-semibold text-gray-800">@${data.username}</h3>
+                        <p class="text-sm text-gray-600">${data.comment}</p>
+                    </div>
+                `);
+                document.getElementById('comments-count').innerText = data.comments_count + ' comments';
+                const countEl = document.getElementById(`comments-count-${postId}`);
+                if (countEl) countEl.innerText = data.comments_count;
+            } else {
+                console.error('Failed to post comment');
+            }
+        };
+
+        form.addEventListener('submit', submitHandler);
+        listenersMap[key] = submitHandler;
+    }
+});
+
+</script>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <title>Profile - Flicksy</title>
+</head>
+
+<body class="bg-gray-100">
+
+  <!-- navbar  -->
+  {% include 'navbar.html' %}
+
+  <div>
+    <!-- profile  -->
+    <div class="w-full bg-white border-b border-blue-200 p-4 sm:p-6">
+      <div class="mx-20 my-5 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
+
+        <!-- Profile Info -->
+        <div class="flex items-center gap-4 sm:gap-6">
+          <img src="{{user_profile.avatar.url}}" alt="Profile" class="w-20 h-20 rounded-full object-cover border" />
+          <div>
+            <h2 class="text-lg font-semibold">@{{user_profile.user.username}}</h2>
+            <p class="text-sm text-gray-600">
+              {{user_profile.bio}}
+            </p>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="flex justify-center gap-6 text-center">
+          <div>
+            <h3 class="text-lg font-semibold">{{number_of_posts}}</h3>
+            <p class="text-sm text-gray-500">posts</p>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold">{{user_followers}}</h3>
+            <p class="text-sm text-gray-500">followers</p>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold">{{user_following}}</h3>
+            <p class="text-sm text-gray-500">following</p>
+          </div>
+        </div>
+
+        <!-- Follow Button -->
+        <div>
+          {% if user.username == user_profile.user.username %}
+          <button
+            class="cursor-pointer px-5 py-2 bg-blue-400 text-white text-sm rounded-full hover:bg-blue-500 transition">
+            <a href="/settings">Account Settings</a>
+          </button>
+          {% else %}
+          <button
+            class="cursor-pointer px-5 py-2 bg-blue-400 text-white text-sm rounded-full hover:bg-blue-500 transition">
+            <a href="/follow/{{user_profile.user.username}}">{{button_text}}</a>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+
+    <div class="w-full bg-gray-100 py-6 px-4">
+      <!-- Tabs -->
+      {% if user.username == user_profile.user.username %}
+      <div class="flex justify-around gap-6 mb-6">
+        <button class="text-black font-semibold underline underline-offset-4 cursor-pointer">Posts</button>
+        <button class="text-black font-medium cursor-pointer"><a href="/saved">Saved</a></button>
+      </div>
+      {% endif %}
+
+      <!-- Grid Gallery -->
+      <div class="grid grid-cols-3 gap-4 max-w-5xl mx-auto">
+        <!-- Post -->
+        {% for post in user_posts %}
+        <div hx-get="/posts/{{ post.id }}" hx-target="#modal-body" hx-trigger="click" class="cursor-pointer">
+          <img src="{{post.image.url}}" alt="Post" class="rounded-lg w-full h-auto object-cover" />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+
+  <div id="modal-body"></div>
+
+  <script>
+    const listenersMap = {}; // To keep track of old listeners by element ID and event type
+
+    function addOrReplaceListener(id, type, handler) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      const key = `${id}_${type}`;
+      if (listenersMap[key]) {
+        el.removeEventListener(type, listenersMap[key]);
+      }
+
+      el.addEventListener(type, handler);
+      listenersMap[key] = handler;
+    }
+  </script>
+
+</body>
+
+</html>
